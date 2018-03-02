@@ -15,7 +15,6 @@
 ## Attributes
 Name | Type  | Description
 --- | --- | ---
-`class` | String | custom class
 `type` | String | "continuous" (default) or "discrete"
 `aria-label-prev` | String | aria-label for previous control
 `aria-label-next` | String | aria-label for next control

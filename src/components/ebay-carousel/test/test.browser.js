@@ -118,7 +118,7 @@ describe('given the carousel starts in the default state', () => {
         });
 
         it('then it applies a translation', () => {
-            expect(list.style.transform).to.equal('translateX(-496px)');
+            expect(list.style.transform).to.equal('translateX(-480px)');
         });
     });
 
@@ -165,7 +165,7 @@ describe('given a continuous carousel has next button clicked', () => {
         prevButton = root.querySelector('.carousel__control--prev');
         testUtils.triggerEvent(nextButton, 'click');
         setTimeout(() => {
-            expect(list.style.transform).to.equal('translateX(-496px)');
+            expect(list.style.transform).to.equal('translateX(-480px)');
             done();
         });
     });

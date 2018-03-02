@@ -151,6 +151,7 @@ function updateControls() {
  * @param {Number} index
  */
 function moveToIndex(index) {
+    // TODO: verify that stop value is calculated correctly
     const endIndex = index + this.calculateScrollOffset(index, 1) + 1;
     this.setState('stop', endIndex - 1);
 
@@ -177,7 +178,7 @@ function moveToIndex(index) {
 function calculateScrollOffset(startIndex, direction) {
     let increment = 0;
     let index = startIndex;
-    let containerWidth = this.getContainerWidth();
+    let containerWidth = this.containerWidth;
 
     while (containerWidth > 0) {
         if (index > this.state.totalItems || index < 0) {
@@ -196,10 +197,10 @@ function calculateScrollOffset(startIndex, direction) {
  */
 function getOffset(widthBeforeIndex, startIndex, endIndex) {
     let offset = 0;
-    const widthToEnd = this.getWidthBeforeIndex(endIndex);
+    const widthToEnd = this.getWidthBeforeIndex(endIndex) - constants.margin - constants.margin;
 
     if (endIndex > this.state.totalItems && startIndex < this.state.totalItems) {
-        offset = this.containerWidth - (widthToEnd - widthBeforeIndex) + constants.margin;
+        offset = this.containerWidth - (widthToEnd - widthBeforeIndex);
     }
 
     return offset;
@@ -246,10 +247,6 @@ function getItemWidth(index, forceUpdate) {
     return 0;
 }
 
-function updateContainerWidth() {
-    this.containerWidth = this.getContainerWidth();
-}
-
 function getContainerWidth() {
     const rect = this.listEl.getBoundingClientRect();
     return rect.width || 0;
@@ -273,7 +270,6 @@ module.exports = require('marko-widgets').defineComponent({
     getWidthBeforeIndex,
     calculateWidths,
     getItemWidth,
-    updateContainerWidth,
     getContainerWidth
 });
 
