@@ -49,10 +49,11 @@ describe('given the carousel has non-default input', () => {
 });
 
 describe('given the carousel starts in the default state', () => {
-    const input = { items: mock.items };
+    const input = { items: mock.sixItems };
     let widget;
     let root;
     let list;
+    let prevButton;
     let nextButton;
 
     beforeEach(() => {
@@ -60,6 +61,7 @@ describe('given the carousel starts in the default state', () => {
         root = document.querySelector('.carousel');
         list = root.querySelector('.carousel__list');
         nextButton = root.querySelector('.carousel__control--next');
+        prevButton = root.querySelector('.carousel__control--prev');
     });
     afterEach(() => widget.destroy());
 
@@ -78,6 +80,20 @@ describe('given the carousel starts in the default state', () => {
         it('then it applies a translation', () => {
             const translation = mock.itemWidth + constants.margin;
             expect(list.style.transform).to.equal(`translateX(-${translation}px)`);
+        });
+    });
+
+    describe('when the previous button is clicked while disabled', () => {
+        let prevSpy;
+        beforeEach((done) => {
+            prevSpy = sinon.spy();
+            widget.on('carousel-prev', prevSpy);
+            testUtils.triggerEvent(prevButton, 'click');
+            setTimeout(done);
+        });
+
+        it('then it does not emits the marko prev event', () => {
+            expect(prevSpy.called).to.equal(false);
         });
     });
 
@@ -105,10 +121,36 @@ describe('given the carousel starts in the default state', () => {
             expect(list.style.transform).to.equal('translateX(-496px)');
         });
     });
+
+    describe('when index is set below zero', () => {
+        let spy;
+        beforeEach(() => {
+            spy = sinon.spy();
+            widget.on('carousel-translate', spy);
+            widget.update_index(-1);
+        });
+
+        it('then it does not emit the marko translate event', () => {
+            expect(spy.called).to.equal(false);
+        });
+    });
+
+    describe('when index is set above the number of items', () => {
+        let spy;
+        beforeEach(() => {
+            spy = sinon.spy();
+            widget.on('carousel-translate', spy);
+            widget.update_index(99);
+        });
+
+        it('then it does not emit the marko translate event', () => {
+            expect(spy.called).to.equal(false);
+        });
+    });
 });
 
 describe('given a continuous carousel has next button clicked', () => {
-    const input = { items: mock.items };
+    const input = { items: mock.sixItems };
     let widget;
     let root;
     let list;
@@ -151,6 +193,20 @@ describe('given a continuous carousel has next button clicked', () => {
 
         it('then it applies a translation back to 0', () => {
             expect(list.style.transform).to.equal('translateX(0px)');
+        });
+    });
+
+    describe('when the next button is clicked while disabled', () => {
+        let nextSpy;
+        beforeEach((done) => {
+            nextSpy = sinon.spy();
+            widget.on('carousel-next', nextSpy);
+            testUtils.triggerEvent(nextButton, 'click');
+            setTimeout(done);
+        });
+
+        it('then it does not emits the marko next event', () => {
+            expect(nextSpy.called).to.equal(false);
         });
     });
 });

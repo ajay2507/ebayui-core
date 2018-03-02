@@ -48,7 +48,7 @@ function init() {
     this.setupItems();
     this.bindEventListeners();
     observer.observeRoot(this, ['index']);
-    this.triggerItemWidthCaching();
+    this.calculateWidths();
     this.performSlide(this.state.index);
 }
 
@@ -58,20 +58,22 @@ function update_index(newIndex) { // eslint-disable-line camelcase
 
 function setupItems() {
     this.listEl = this.el.querySelector(`.${constants.classes.list}`);
-    this.childrenEls = this.listEl.children;
-    this.setState('totalItems', this.childrenEls.length);
-    this.updateContainerWidth();
+    this.itemEls = this.listEl.children;
+    this.setState('totalItems', this.itemEls.length);
 }
 
 function bindEventListeners() {
     window.addEventListener('resize', throttle(() => {
-        this.updateContainerWidth();
-        this.triggerItemWidthCaching(true);
+        this.calculateWidths(true);
         this.performSlide(parseInt(this.state.index));
     }));
 }
 
 function handleNext() {
+    if (this.state.nextControlDisabled) {
+        return;
+    }
+
     emitAndFire(this, 'carousel-next');
 
     const lastIndex = this.state.totalItems - 1;
@@ -95,6 +97,10 @@ function handleNext() {
 }
 
 function handlePrev() {
+    if (this.state.prevControlDisabled) {
+        return;
+    }
+
     emitAndFire(this, 'carousel-prev');
 
     const firstIndex = 0;
@@ -139,48 +145,12 @@ function updateControls() {
     this.update(); // FIXME: why won't it rerender on its own?
 }
 
-/**
- * Calculate the number of cards to scroll from startIndex based on their widths
- * @param {Number} startIndex: Index position to calculate from
- * @param {Number} direction: 1 for forward, -1 for backward
- */
-function calculateScrollOffset(startIndex, direction) {
-    let increment = 0;
-    let index = startIndex;
-
-    if (startIndex < 0) {
-        return increment;
-    }
-
-    let containerWidth = this.getContainerWidth();
-
-    while (containerWidth > 0) {
-        if (index > this.state.totalItems || index < 0) {
-            break;
-        }
-        containerWidth -= this.getSingleItemWidth(index);
-        increment += 1;
-        index += direction;
-    }
-
-    return increment - 1;
-}
 
 /**
  * Move carousel position to an index
  * @param {Number} index
  */
 function moveToIndex(index) {
-    if (index < 0) {
-        this.setState('index', 0);
-        return;
-    }
-
-    if (index >= this.state.totalItems) {
-        this.setState('index', this.state.totalItems - 1);
-        return;
-    }
-
     const endIndex = index + this.calculateScrollOffset(index, 1) + 1;
     this.setState('stop', endIndex - 1);
 
@@ -197,6 +167,28 @@ function moveToIndex(index) {
     const offset = this.getOffset(widthBeforeIndex, index, endIndex);
     this.listEl.style.transform = `translateX(${(-1 * widthBeforeIndex) + offset}px)`;
     emitAndFire(this, 'carousel-translate');
+}
+
+/**
+ * Calculate the number of cards to scroll from startIndex based on their widths
+ * @param {Number} startIndex: Index position to calculate from
+ * @param {Number} direction: 1 for forward, -1 for backward
+ */
+function calculateScrollOffset(startIndex, direction) {
+    let increment = 0;
+    let index = startIndex;
+    let containerWidth = this.getContainerWidth();
+
+    while (containerWidth > 0) {
+        if (index > this.state.totalItems || index < 0) {
+            break;
+        }
+        containerWidth -= this.getItemWidth(index);
+        increment += 1;
+        index += direction;
+    }
+
+    return increment - 1;
 }
 
 /**
@@ -220,19 +212,20 @@ function getWidthBeforeIndex(index = 0) {
     let width = 0;
 
     for (let i = 0; i < index; i++) {
-        width += this.getSingleItemWidth(i) + constants.margin;
+        width += this.getItemWidth(i) + constants.margin;
     }
 
     return width;
 }
 
 /**
- * Trigger a one time caching of all elements within the carousel
+ * Calculate and store widths of container and items
  * @params {Boolean} forceUpdate: Updates the cache with new values
  */
-function triggerItemWidthCaching(forceUpdate) {
+function calculateWidths(forceUpdate) {
+    this.containerWidth = this.getContainerWidth();
     for (let i = 0; i < this.state.totalItems; i++) {
-        this.getSingleItemWidth(i, forceUpdate);
+        this.getItemWidth(i, forceUpdate);
     }
 }
 
@@ -241,11 +234,11 @@ function triggerItemWidthCaching(forceUpdate) {
  * @params {Number} index: Index of the carousel item
  * @params {Boolean} forceUpdate: Trigger fetch update of cache values
  */
-function getSingleItemWidth(index, forceUpdate) {
+function getItemWidth(index, forceUpdate) {
     if (this.itemCache && this.itemCache[index] && !forceUpdate) {
         return this.itemCache[index];
     } else if (index < this.state.totalItems && index >= 0) {
-        const rect = this.childrenEls[index].getBoundingClientRect();
+        const rect = this.itemEls[index].getBoundingClientRect();
         this.itemCache[index] = rect.width || 0;
         return this.itemCache[index];
     }
@@ -278,8 +271,8 @@ module.exports = require('marko-widgets').defineComponent({
     moveToIndex,
     getOffset,
     getWidthBeforeIndex,
-    triggerItemWidthCaching,
-    getSingleItemWidth,
+    calculateWidths,
+    getItemWidth,
     updateContainerWidth,
     getContainerWidth
 });
