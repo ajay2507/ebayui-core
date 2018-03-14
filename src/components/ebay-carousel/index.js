@@ -29,6 +29,8 @@ function getInitialState(input) {
     return {
         index,
         type,
+        isContinuous: type === constants.types.continuous,
+        isDiscrete: type === constants.types.discrete,
         prevControlDisabled: index === 0,
         nextControlDisabled: false,
         ariaLabelPrev: input.ariaLabelPrev,
@@ -83,9 +85,9 @@ function handleNext() {
         return;
     }
 
-    if (this.state.type === constants.types.continuous) {
+    if (this.state.isContinuous) {
         newIndex = this.state.index + this.calculateTargetIndex(this.state.index, 1);
-    } else if (this.state.type === constants.types.discrete) {
+    } else if (this.state.isDiscrete) {
         newIndex = this.state.index + 1;
     }
 
@@ -110,9 +112,9 @@ function handlePrev() {
         return;
     }
 
-    if (this.state.type === constants.types.continuous) {
+    if (this.state.isContinuous) {
         newIndex = this.state.index - this.calculateTargetIndex(this.state.index, -1);
-    } else if (this.state.type === constants.types.discrete) {
+    } else if (this.state.isDiscrete) {
         newIndex = this.state.index - 1;
     }
 

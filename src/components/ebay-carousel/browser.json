@@ -1,5 +1,6 @@
 {
     "dependencies": [
+        "@ebay/skin/utility",
         "@ebay/skin/less",
         "@ebay/skin/iconfont",
         "@ebay/skin/dist/icon/ds4/icon.css",

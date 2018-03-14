@@ -65,15 +65,20 @@
     }
 
     &:hover &__control {
-        display: block;
+        opacity: 0.95;
+
+        &[aria-disabled="true"] {
+            opacity: 0.3;
+            cursor: default;
+        }
     }
 
     .carousel__container--controls-disabled .carousel__control {
-        display: none;
+        opacity: 0;
     }
 
     &__control {
-        display: none;
+        opacity: 0;
         font-size: 18px;
         background-color: @color-core-white;
         height: 70px;
@@ -84,9 +89,8 @@
         top: 50%;
         transform: translateY(-50%);
         position: absolute;
-        opacity: 0.95;
 
-        &:hover:not([disabled]) {
+        &:hover:not([aria-disabled="true"]) {
             background-color: @color-core-gray-dim;
 
             &.icon:before {
@@ -94,13 +98,8 @@
             }
         }
 
-        &:hover:active:not([disabled]) {
+        &:hover:active:not([aria-disabled="true"]) {
             background-color: @color-core-gray-davys;
-        }
-
-        &[disabled] {
-            opacity: 0.3;
-            cursor: default;
         }
 
         &--prev {

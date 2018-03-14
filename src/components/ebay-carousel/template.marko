@@ -1,11 +1,11 @@
 <div class=data.classes w-bind ${data.htmlAttributes}>
     <div class=("carousel__container" + (data.prevControlDisabled && data.nextControlDisabled ? " carousel__container--controls-disabled" : ""))>
+        <span if(data.isDiscrete) class="clipped" aria-live="polite" aria-atomic="true">${data.index + 1} of ${data.totalItems}</span>
         <button
             class="icon icon--chevron-light-left carousel__control carousel__control--prev"
             w-onclick="handlePrev"
             aria-label=data.ariaLabelPrev
-            aria-disabled=String(data.prevControlDisabled)
-            disabled=data.prevControlDisabled/>
+            aria-disabled=String(data.prevControlDisabled)/>
         <ul class="carousel__list" w-preserve-attrs="style">
             <for(item in data.items)>
                 <li ${item.htmlAttributes} w-body=item.renderBody/>
@@ -15,7 +15,6 @@
             class="icon icon--chevron-light-right carousel__control carousel__control--next"
             w-onclick="handleNext"
             aria-label=data.ariaLabelNext
-            aria-disabled=String(data.nextControlDisabled)
-            disabled=data.nextControlDisabled/>
+            aria-disabled=String(data.nextControlDisabled)/>
     </div>
 </div>
