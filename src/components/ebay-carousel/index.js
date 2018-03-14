@@ -84,7 +84,7 @@ function handleNext() {
     }
 
     if (this.state.type === constants.types.continuous) {
-        newIndex = this.state.index + this.calculateScrollOffset(this.state.index, 1);
+        newIndex = this.state.index + this.calculateTargetIndex(this.state.index, 1);
     } else if (this.state.type === constants.types.discrete) {
         newIndex = this.state.index + 1;
     }
@@ -111,7 +111,7 @@ function handlePrev() {
     }
 
     if (this.state.type === constants.types.continuous) {
-        newIndex = this.state.index - this.calculateScrollOffset(this.state.index, -1);
+        newIndex = this.state.index - this.calculateTargetIndex(this.state.index, -1);
     } else if (this.state.type === constants.types.discrete) {
         newIndex = this.state.index - 1;
     }
@@ -134,25 +134,17 @@ function performSlide(index) {
  * Update button attributes based on current position
  */
 function updateControls() {
-    let stopValue;
     this.setState('prevControlDisabled', this.state.index === 0);
-    if (this.state.type === constants.types.continuous) {
-        stopValue = this.state.totalItems;
-    } else if (this.state.type === constants.types.discrete) {
-        stopValue = this.state.totalItems - 1;
-    }
-    this.setState('nextControlDisabled', this.state.stop === stopValue);
+    this.setState('nextControlDisabled', this.state.stop === this.state.totalItems);
     this.update(); // FIXME: why won't it rerender on its own?
 }
-
 
 /**
  * Move carousel position to an index
  * @param {Number} index
  */
 function moveToIndex(index) {
-    // TODO: verify that stop value is calculated correctly
-    const endIndex = index + this.calculateScrollOffset(index, 1) + 1;
+    const endIndex = index + this.calculateTargetIndex(index, 1) + 1;
     this.setState('stop', endIndex - 1);
 
     if (endIndex > this.state.totalItems) {
@@ -175,10 +167,11 @@ function moveToIndex(index) {
  * @param {Number} startIndex: Index position to calculate from
  * @param {Number} direction: 1 for forward, -1 for backward
  */
-function calculateScrollOffset(startIndex, direction) {
+function calculateTargetIndex(startIndex, direction) {
+    const widthBuffer = 5;
+    let containerWidth = this.containerWidth + widthBuffer + constants.margin; // add margin to compensate for last item not having margin
     let increment = 0;
     let index = startIndex;
-    let containerWidth = this.containerWidth;
 
     while (containerWidth > 0) {
         if (index > this.state.totalItems || index < 0) {
@@ -187,6 +180,7 @@ function calculateScrollOffset(startIndex, direction) {
         containerWidth -= this.getItemWidth(index);
         increment += 1;
         index += direction;
+        containerWidth -= constants.margin;
     }
 
     return increment - 1;
@@ -264,7 +258,7 @@ module.exports = require('marko-widgets').defineComponent({
     handlePrev,
     performSlide,
     updateControls,
-    calculateScrollOffset,
+    calculateTargetIndex,
     moveToIndex,
     getOffset,
     getWidthBeforeIndex,

@@ -30,6 +30,14 @@ app.get('/:component?', (req, res) => {
         components: demoUtils.getComponentsWithExamples('src')
     };
 
+    // allow .only in example folder name
+    model.examples.some((example) => {
+        if (example.name.indexOf('.only') !== -1) {
+            model.examples = model.examples.filter(ex => ex.name.indexOf('.only') !== -1);
+            return true;
+        }
+    });
+
     req.model = model;
 
     template.render(req, res);
