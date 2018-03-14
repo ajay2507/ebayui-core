@@ -1,6 +1,6 @@
 # ebay-carousel
 
-## Usage
+## ebay-carousel Usage
 
 ```marko
 <ebay-carousel>
@@ -12,19 +12,20 @@
 </ebay-carousel>
 ```
 
-## Attributes
+## ebay-carousel Attributes
 Name | Type  | Description
 --- | --- | ---
 `type` | String | "continuous" (default) or "discrete"
 `aria-label-prev` | String | aria-label for previous control
 `aria-label-next` | String | aria-label for next control
 
-## Properties
+## ebay-carousel Properties
 Name | Type | Description
 --- | --- | ---
 `index` | String | zero-based item position
 
-## Events
+## ebay-carousel Events
+
 Event | Description
 --- | ---
 `carousel-next` | click next control

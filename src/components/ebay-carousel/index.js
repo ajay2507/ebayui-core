@@ -63,7 +63,7 @@ function setupItems() {
 }
 
 function bindEventListeners() {
-    window.addEventListener('resize', throttle(() => {
+    this.subscribeTo(window).on('resize', throttle(() => {
         this.calculateWidths(true);
         this.performSlide(parseInt(this.state.index));
     }));
