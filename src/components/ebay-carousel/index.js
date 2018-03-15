@@ -48,10 +48,10 @@ function getTemplateData(state) {
 function init() {
     this.itemCache = [];
     this.setupItems();
-    this.bindEventListeners();
     observer.observeRoot(this, ['index']);
     this.calculateWidths();
     this.performSlide(this.state.index);
+    this.subscribeTo(window).on('resize', throttle(() => this.resizeHandler(), 100));
 }
 
 function update_index(newIndex) { // eslint-disable-line camelcase
@@ -64,65 +64,49 @@ function setupItems() {
     this.setState('totalItems', this.itemEls.length);
 }
 
-function bindEventListeners() {
-    this.subscribeTo(window).on('resize', throttle(() => {
-        this.calculateWidths(true);
-        this.performSlide(parseInt(this.state.index));
-    }));
+function resizeHandler() {
+    this.calculateWidths(true);
+    this.performSlide(parseInt(this.state.index));
 }
 
 function handleNext() {
-    if (this.state.nextControlDisabled) {
-        return;
-    }
-
-    emitAndFire(this, 'carousel-next');
-
     const lastIndex = this.state.totalItems - 1;
     let newIndex = -1;
 
-    if (this.state.index === lastIndex) {
-        return;
-    }
+    if (!this.state.nextControlDisabled && this.state.index < lastIndex) {
+        if (this.state.isContinuous) {
+            newIndex = this.state.index + this.calculateTargetIndex(this.state.index, 1);
+        } else if (this.state.isDiscrete) {
+            newIndex = this.state.index + 1;
+        }
 
-    if (this.state.isContinuous) {
-        newIndex = this.state.index + this.calculateTargetIndex(this.state.index, 1);
-    } else if (this.state.isDiscrete) {
-        newIndex = this.state.index + 1;
-    }
+        if (newIndex > lastIndex) {
+            newIndex = lastIndex;
+        }
 
-    if (newIndex > lastIndex) {
-        newIndex = lastIndex;
+        emitAndFire(this, 'carousel-next');
+        this.setState('index', newIndex);
     }
-
-    this.setState('index', newIndex);
 }
 
 function handlePrev() {
-    if (this.state.prevControlDisabled) {
-        return;
-    }
-
-    emitAndFire(this, 'carousel-prev');
-
     const firstIndex = 0;
     let newIndex = -1;
 
-    if (this.state.index === firstIndex) {
-        return;
-    }
+    if (!this.state.prevControlDisabled && this.state.index > firstIndex) {
+        if (this.state.isContinuous) {
+            newIndex = this.state.index - this.calculateTargetIndex(this.state.index, -1);
+        } else if (this.state.isDiscrete) {
+            newIndex = this.state.index - 1;
+        }
 
-    if (this.state.isContinuous) {
-        newIndex = this.state.index - this.calculateTargetIndex(this.state.index, -1);
-    } else if (this.state.isDiscrete) {
-        newIndex = this.state.index - 1;
-    }
+        if (newIndex < firstIndex) {
+            newIndex = firstIndex;
+        }
 
-    if (newIndex < firstIndex) {
-        newIndex = firstIndex;
+        emitAndFire(this, 'carousel-prev');
+        this.setState('index', newIndex);
     }
-
-    this.setState('index', newIndex);
 }
 
 function performSlide(index) {
@@ -153,15 +137,14 @@ function moveToIndex(index) {
         this.setState('stop', this.state.totalItems);
     }
 
-    // TODO (look into this) case where items are smaller than available width
-    if (this.state.index === 0 && this.state.stop === this.state.totalItems) {
-        return;
+    // items width is smaller than container, so don't translate
+    const shouldNotMove = this.state.index === 0 && this.state.stop === this.state.totalItems;
+    if (!shouldNotMove) {
+        const widthBeforeIndex = this.getWidthBeforeIndex(index);
+        const offset = this.getOffset(widthBeforeIndex, index, endIndex);
+        this.listEl.style.transform = `translateX(${(-1 * widthBeforeIndex) + offset}px)`;
+        emitAndFire(this, 'carousel-translate');
     }
-
-    const widthBeforeIndex = this.getWidthBeforeIndex(index);
-    const offset = this.getOffset(widthBeforeIndex, index, endIndex);
-    this.listEl.style.transform = `translateX(${(-1 * widthBeforeIndex) + offset}px)`;
-    emitAndFire(this, 'carousel-translate');
 }
 
 /**
@@ -170,10 +153,11 @@ function moveToIndex(index) {
  * @param {Number} direction: 1 for forward, -1 for backward
  */
 function calculateTargetIndex(startIndex, direction) {
-    const widthBuffer = 5;
-    let containerWidth = this.containerWidth + widthBuffer + constants.margin; // add margin to compensate for last item not having margin
     let increment = 0;
     let index = startIndex;
+    const widthBuffer = 5;
+    // add margin to compensate for last item not having margin
+    let containerWidth = this.containerWidth + widthBuffer + constants.margin;
 
     while (containerWidth > 0) {
         if (index > this.state.totalItems || index < 0) {
@@ -255,7 +239,7 @@ module.exports = require('marko-widgets').defineComponent({
     getTemplateData,
     update_index,
     setupItems,
-    bindEventListeners,
+    resizeHandler,
     handleNext,
     handlePrev,
     performSlide,

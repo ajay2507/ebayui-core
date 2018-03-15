@@ -7,6 +7,7 @@ const renderer = require('../');
 const privates = renderer.privates;
 const constants = privates.constants;
 const defaults = privates.defaults;
+const containerWidth = 800; // puppeteer default
 
 describe('given the carousel is in the default state', () => {
     let widget;
@@ -26,6 +27,20 @@ describe('given the carousel is in the default state', () => {
 
         it('then it exposes state on root element', () => {
             expect(root.index).to.equal(defaults.index);
+        });
+    });
+
+    describe('when the window is resized', () => {
+        let spy;
+        beforeEach((done) => {
+            spy = sinon.spy(widget, 'resizeHandler');
+            testUtils.triggerEvent(window, 'resize');
+            setTimeout(done, 100);
+        });
+        afterEach(() => widget.resizeHandler.restore());
+
+        it('then it executes the resize handler', () => {
+            expect(spy.calledOnce).to.equal(true);
         });
     });
 });
@@ -207,6 +222,120 @@ describe('given a continuous carousel has next button clicked', () => {
 
         it('then it does not emits the marko next event', () => {
             expect(nextSpy.called).to.equal(false);
+        });
+    });
+});
+
+describe('given a continuous carousel with few items', () => {
+    const input = { items: mock.threeItems };
+    let widget;
+
+    beforeEach((done) => {
+        widget = renderer.renderSync(input).appendTo(document.body).getWidget();
+        setTimeout(done);
+    });
+    afterEach(() => widget.destroy());
+
+    describe('when index is set', () => {
+        let spy;
+        beforeEach(() => {
+            spy = sinon.spy();
+            widget.on('carousel-translate', spy);
+            widget.update_index(1);
+        });
+
+        it('then it does not emit the marko translate event', () => {
+            expect(spy.called).to.equal(false);
+        });
+    });
+});
+
+describe('given a discrete carousel', () => {
+    const input = { type: 'discrete', items: mock.threeItems };
+    let widget;
+    let root;
+    let list;
+    let nextButton;
+
+    beforeEach((done) => {
+        widget = renderer.renderSync(input).appendTo(document.body).getWidget();
+        root = document.querySelector('.carousel');
+        list = root.querySelector('.carousel__list');
+        nextButton = root.querySelector('.carousel__control--next');
+        setTimeout(done);
+    });
+    afterEach(() => widget.destroy());
+
+    describe('when next button is clicked', () => {
+        let nextSpy;
+        let translateSpy;
+        beforeEach((done) => {
+            nextSpy = sinon.spy();
+            translateSpy = sinon.spy();
+            widget.on('carousel-next', nextSpy);
+            widget.on('carousel-translate', translateSpy);
+            testUtils.triggerEvent(nextButton, 'click');
+            setTimeout(done);
+        });
+
+        it('then it emits the marko next event', () => {
+            expect(nextSpy.calledOnce).to.equal(true);
+        });
+
+        it('then it emits the marko translate event', () => {
+            expect(translateSpy.calledOnce).to.equal(true);
+        });
+
+        it('then it applies a translation', () => {
+            expect(list.style.transform).to.equal(`translateX(-${containerWidth + constants.margin}px)`);
+        });
+    });
+});
+
+describe('given a discrete carousel has next button clicked', () => {
+    const input = { type: 'discrete', items: mock.threeItems };
+    let widget;
+    let root;
+    let list;
+    let nextButton;
+    let prevButton;
+
+    beforeEach((done) => {
+        widget = renderer.renderSync(input).appendTo(document.body).getWidget();
+        root = document.querySelector('.carousel');
+        list = root.querySelector('.carousel__list');
+        nextButton = root.querySelector('.carousel__control--next');
+        prevButton = root.querySelector('.carousel__control--prev');
+        testUtils.triggerEvent(nextButton, 'click');
+        setTimeout(() => {
+            expect(list.style.transform).to.equal(`translateX(-${containerWidth + constants.margin}px)`);
+            done();
+        });
+    });
+    afterEach(() => widget.destroy());
+
+    describe('when the previous button is clicked', () => {
+        let prevSpy;
+        let translateSpy;
+        beforeEach((done) => {
+            prevSpy = sinon.spy();
+            translateSpy = sinon.spy();
+            widget.on('carousel-prev', prevSpy);
+            widget.on('carousel-translate', translateSpy);
+            testUtils.triggerEvent(prevButton, 'click');
+            setTimeout(done);
+        });
+
+        it('then it emits the marko prev event', () => {
+            expect(prevSpy.calledOnce).to.equal(true);
+        });
+
+        it('then it emits the marko translate event', () => {
+            expect(translateSpy.calledOnce).to.equal(true);
+        });
+
+        it('then it applies a translation back to 0', () => {
+            expect(list.style.transform).to.equal('translateX(0px)');
         });
     });
 });
