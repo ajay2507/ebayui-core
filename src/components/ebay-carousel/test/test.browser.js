@@ -71,12 +71,13 @@ describe('given the carousel starts in the default state', () => {
     let prevButton;
     let nextButton;
 
-    beforeEach(() => {
+    beforeEach((done) => {
         widget = renderer.renderSync(input).appendTo(document.body).getWidget();
         root = document.querySelector('.carousel');
         list = root.querySelector('.carousel__list');
         nextButton = root.querySelector('.carousel__control--next');
         prevButton = root.querySelector('.carousel__control--prev');
+        setTimeout(done);
     });
     afterEach(() => widget.destroy());
 
@@ -178,10 +179,12 @@ describe('given a continuous carousel has next button clicked', () => {
         list = root.querySelector('.carousel__list');
         nextButton = root.querySelector('.carousel__control--next');
         prevButton = root.querySelector('.carousel__control--prev');
-        testUtils.triggerEvent(nextButton, 'click');
         setTimeout(() => {
-            expect(list.style.transform).to.equal('translateX(-480px)');
-            done();
+            testUtils.triggerEvent(nextButton, 'click');
+            setTimeout(() => {
+                expect(list.style.transform).to.equal('translateX(-480px)');
+                done();
+            });
         });
     });
     afterEach(() => widget.destroy());
@@ -306,10 +309,12 @@ describe('given a discrete carousel has next button clicked', () => {
         list = root.querySelector('.carousel__list');
         nextButton = root.querySelector('.carousel__control--next');
         prevButton = root.querySelector('.carousel__control--prev');
-        testUtils.triggerEvent(nextButton, 'click');
         setTimeout(() => {
-            expect(list.style.transform).to.equal(`translateX(-${containerWidth + constants.margin}px)`);
-            done();
+            testUtils.triggerEvent(nextButton, 'click');
+            setTimeout(() => {
+                expect(list.style.transform).to.equal(`translateX(-${containerWidth + constants.margin}px)`);
+                done();
+            });
         });
     });
     afterEach(() => widget.destroy());

@@ -1,5 +1,6 @@
 .carousel {
     @transition-time: 0.25s;
+    @transition-function: ease-out;
 
     &__container {
         white-space: nowrap;
@@ -15,8 +16,7 @@
         box-sizing: border-box;
         position: relative;
         transform: translateX(0);
-        transition: transform @transition-time;
-
+        transition: transform @transition-time @transition-function;
         width: 100%;
         margin: 0;
         padding: 0;
@@ -78,6 +78,7 @@
     }
 
     &__control {
+        transition: opacity @transition-time @transition-function;
         opacity: 0;
         font-size: 18px;
         background-color: @color-core-white;
