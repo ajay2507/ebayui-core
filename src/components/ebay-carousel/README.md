@@ -31,3 +31,5 @@ Event | Description
 `carousel-next` | click next control
 `carousel-prev` | click previous control
 `carousel-translate` | translate carousel content
+
+Note: The `carousel` will manipulate the `tabindex` property of directly nested links inside `<ebay-carousel-item>`.

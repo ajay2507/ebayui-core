@@ -115,7 +115,9 @@
 
 @media only screen and (max-width: 599px) {
     .carousel:hover .carousel__control {
-        display: none;
+        &, &[aria-disabled="true"] { // needs specificity
+            opacity: 0;
+        }
     }
 
     .carousel--continuous {
@@ -125,7 +127,7 @@
 
         .carousel__control--prev,
         .carousel__control--next {
-            display: none;
+            opacity: 0;
         }
     }
 }
