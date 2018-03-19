@@ -5,9 +5,6 @@ const observer = require('../../common/property-observer');
 const template = require('./template.marko');
 
 const constants = {
-    classes: {
-        list: 'carousel__list'
-    },
     types: {
         discrete: 'discrete',
         continuous: 'continuous'
@@ -15,7 +12,6 @@ const constants = {
     margin: 16 // matches the css applied to each item
 };
 const defaults = {
-    index: 0,
     type: constants.types.continuous
 };
 
@@ -24,14 +20,15 @@ function getInitialState(input) {
         htmlAttributes: processHtmlAttributes(item),
         renderBody: item.renderBody
     }));
-    const index = parseInt(input.index) || defaults.index;
     const type = input.type || defaults.type;
     return {
-        index,
+        index: 0,
+        firstVisibleIndex: 0,
+        lastVisibleIndex: 0,
         type,
         isContinuous: type === constants.types.continuous,
         isDiscrete: type === constants.types.discrete,
-        prevControlDisabled: index === 0,
+        prevControlDisabled: true,
         nextControlDisabled: false,
         ariaLabelPrev: input.ariaLabelPrev,
         ariaLabelNext: input.ariaLabelNext,
@@ -48,7 +45,7 @@ function getTemplateData(state) {
 
 function init() {
     this.itemCache = [];
-    this.listEl = this.el.querySelector(`.${constants.classes.list}`);
+    this.listEl = this.el.querySelector('.carousel__list');
     this.itemEls = this.listEl.children;
     this.lastIndex = this.itemEls.length - 1;
     observer.observeRoot(this, ['index']);
@@ -69,10 +66,9 @@ function resizeHandler() {
 function handleNext() {
     let newIndex = -1;
 
-    if (!this.state.nextControlDisabled && this.state.index <= this.lastIndex) {
+    if (!this.state.nextControlDisabled) {
         if (this.state.isContinuous) {
-            // TODO: avoid calling calculateIndexChange multiple times in response to UI
-            newIndex = this.state.index + this.calculateIndexChange(this.state.index, 1);
+            newIndex = this.calculateNextIndex();
         } else if (this.state.isDiscrete) {
             newIndex = this.state.index + 1;
         }
@@ -90,9 +86,9 @@ function handlePrev() {
     const firstIndex = 0;
     let newIndex = -1;
 
-    if (!this.state.prevControlDisabled && this.state.index > firstIndex) {
+    if (!this.state.prevControlDisabled) {
         if (this.state.isContinuous) {
-            newIndex = this.state.index - this.calculateIndexChange(this.state.index, -1);
+            newIndex = this.calculatePrevIndex();
         } else if (this.state.isDiscrete) {
             newIndex = this.state.index - 1;
         }
@@ -111,21 +107,15 @@ function performSlide(index) {
         this.moveToIndex(index);
         this.updateControls();
     }
+    this.update(); // FIXME: why won't it rerender on its own?
 }
 
 /**
  * Update button attributes based on current position
  */
 function updateControls() {
-    const oldPrevControlDisabled = this.state.prevControlDisabled;
-    const oldNextControlDisabled = this.state.nextControlDisabled;
     this.setState('prevControlDisabled', this.state.index === 0);
     this.setState('nextControlDisabled', this.state.stop || this.state.index === this.lastIndex);
-
-    if (this.state.prevControlDisabled !== oldPrevControlDisabled
-     || this.state.nextControlDisabled !== oldNextControlDisabled) {
-        this.update(); // FIXME: why won't it rerender on its own?
-    }
 }
 
 /**
@@ -136,7 +126,7 @@ function moveToIndex(index) {
     // if items width is smaller than container, then don't translate
     const shouldNotMove = this.allItemsWidth < this.containerWidth;
     if (shouldNotMove) {
-        this.setState('stop', true);
+        this.setState('stop', true); // TODO: refactor stop uasge
     } else {
         const widthBeforeIndex = this.getWidthBeforeIndex(index);
         let translation = (-1 * widthBeforeIndex);
@@ -150,9 +140,12 @@ function moveToIndex(index) {
 
         if (translation !== this.state.translation) {
             this.setState('translation', translation);
-            this.update(); // FIXME
             emitAndFire(this, 'carousel-translate');
         }
+
+        // TODO: set child links to tabindex=-1 when aria-hidden=true
+        this.setState('firstVisibleIndex', this.calculateFirstVisibleIndex());
+        this.setState('lastVisibleIndex', this.calculateLastVisibleIndex());
     }
 }
 
@@ -160,41 +153,78 @@ function getAllItemsWidth() {
     return this.getWidthBeforeIndex(this.lastIndex + 1);
 }
 
-/**
- * Calculate the diff from startIndex based on item widths
- * @param {Number} startIndex: Index position to calculate from
- * @param {Number} direction: 1 for forward, -1 for backward
- */
-function calculateIndexChange(startIndex, direction) {
-    let diff = 0;
-    let index = startIndex;
-    const widthBuffer = 5;
-    // add margin to compensate for last item not having margin
-    let containerWidth = this.containerWidth + widthBuffer + constants.margin;
-    let willHitEnd = false;
+function calculateNextIndex() {
+    let index = this.state.index;
+    let containerWidth = this.containerWidth + constants.margin;
 
-    if (this.allItemsWidth > containerWidth && this.allItemsWidth - containerWidth < containerWidth) {
-        containerWidth = this.allItemsWidth - containerWidth;
-        willHitEnd = true;
+    const lastVisibleIndex = this.calculateLastVisibleIndex();
+    index = lastVisibleIndex + 1;
+
+    // check if we'll hit the right end
+    const widthAfterCurrentIndex = this.getWidthAfterIndex(lastVisibleIndex);
+    if (widthAfterCurrentIndex < containerWidth) {
+        containerWidth = widthAfterCurrentIndex;
+        index--;
     }
 
-    while (containerWidth > 0) {
-        if (index > this.lastIndex || index < 0) {
+    return index;
+}
+
+function calculatePrevIndex() {
+    let index = this.state.index;
+    let containerWidth = this.containerWidth + constants.margin;
+
+    // check if we'll hit the left end
+    const widthBeforeCurrentIndex = this.getWidthBeforeIndex(this.state.index);
+    if (widthBeforeCurrentIndex < containerWidth) {
+        containerWidth = widthBeforeCurrentIndex;
+        return 0;
+    }
+
+    if (this.state.nextControlDisabled) {
+        index = this.calculateFirstVisibleIndex() - 1;
+    }
+
+    const prevIndex = this.widthLoop(index, -1, containerWidth) + 1;
+
+    return prevIndex;
+}
+
+function widthLoop(startIndex, direction, containerWidth) {
+    let index = startIndex;
+    let remainingWidth = containerWidth;
+
+    while (remainingWidth > 0) {
+        remainingWidth -= this.getItemWidth(index);
+        if (index > this.lastIndex || index < 0 || remainingWidth < 0) {
             break;
         }
-        containerWidth -= this.getItemWidth(index);
-        diff++;
+        remainingWidth -= constants.margin;
         index += direction;
-        containerWidth -= constants.margin;
     }
 
-    return willHitEnd ? diff : diff - 1;
+    return index;
+}
+
+function calculateFirstVisibleIndex() {
+    if (!this.state.nextControlDisabled) {
+        return this.state.index;
+    }
+
+    // if carousel is all the way on right side, need to calculate manually
+    const containerWidth = this.containerWidth + constants.margin;
+    return this.widthLoop(this.lastIndex, -1, containerWidth) + 1;
+}
+
+function calculateLastVisibleIndex() {
+    const containerWidth = this.containerWidth + constants.margin;
+    return this.widthLoop(this.state.index, 1, containerWidth) - 1;
 }
 
 /**
  * Get the aggregate width of all items in the carousel until this index
  */
-function getWidthBeforeIndex(index = 0) {
+function getWidthBeforeIndex(index) {
     const fullWidth = index > this.lastIndex;
     const loopIndex = fullWidth ? this.lastIndex + 1 : index;
     let width = 0;
@@ -206,6 +236,19 @@ function getWidthBeforeIndex(index = 0) {
     if (fullWidth) {
         width -= constants.margin;
     }
+
+    return width;
+}
+
+/**
+ * Get the aggregate width of all items in the carousel after (and including) this index
+ */
+function getWidthAfterIndex(index) {
+    let width = 0;
+    for (let i = index; i <= this.lastIndex; i++) {
+        width += this.getItemWidth(i) + constants.margin;
+    }
+    width -= constants.margin;
 
     return width;
 }
@@ -255,10 +298,15 @@ module.exports = require('marko-widgets').defineComponent({
     handlePrev,
     performSlide,
     updateControls,
-    calculateIndexChange,
+    calculateNextIndex,
+    calculatePrevIndex,
     getAllItemsWidth,
     moveToIndex,
+    widthLoop,
+    calculateFirstVisibleIndex,
+    calculateLastVisibleIndex,
     getWidthBeforeIndex,
+    getWidthAfterIndex,
     calculateWidths,
     getItemWidth,
     getContainerWidth

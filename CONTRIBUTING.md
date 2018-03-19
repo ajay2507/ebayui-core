@@ -25,6 +25,7 @@ Clone this repo to your local environment then run `yarn` to install all depende
 ### Local Server
 
 Execute `yarn start` to start the local web server at [http://localhost:3000](http://localhost:3000).
+This demo page will render the `examples/` for each component. To selectively include certain examples for debugging, add `.only` to their folder names.
 
 ### Tests
 

@@ -7,8 +7,10 @@
             aria-label=data.ariaLabelPrev
             aria-disabled=String(data.prevControlDisabled)/>
         <ul class="carousel__list" style=("transform: translateX(" + data.translation + "px)")>
-            <for(item in data.items)>
-                <li ${item.htmlAttributes} w-body=item.renderBody/>
+            <for(item in data.items | status-var=loop)>
+                <li ${item.htmlAttributes}
+                    w-body=item.renderBody
+                    aria-hidden=String(loop.getIndex() < data.firstVisibleIndex || loop.getIndex() > data.lastVisibleIndex)/>
             </for>
         </ul>
         <button

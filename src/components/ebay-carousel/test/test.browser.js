@@ -21,12 +21,11 @@ describe('given the carousel is in the default state', () => {
 
     describe('when it is rendered', () => {
         it('then it sets state to correct defaults', () => {
-            expect(widget.state.index).to.equal(defaults.index);
             expect(widget.state.type).to.equal(defaults.type);
         });
 
         it('then it exposes state on root element', () => {
-            expect(root.index).to.equal(defaults.index);
+            expect(root.index).to.equal(0);
         });
     });
 
@@ -41,24 +40,6 @@ describe('given the carousel is in the default state', () => {
 
         it('then it executes the resize handler', () => {
             expect(spy.calledOnce).to.equal(true);
-        });
-    });
-});
-
-describe('given the carousel has non-default input', () => {
-    const input = { index: 1 };
-    let widget;
-    let root;
-
-    beforeEach(() => {
-        widget = renderer.renderSync(input).appendTo(document.body).getWidget();
-        root = document.querySelector('.carousel');
-    });
-    afterEach(() => widget.destroy());
-
-    describe('when it is rendered', () => {
-        it('then it uses state from input attributes', () => {
-            expect(root.index).to.equal(input.index);
         });
     });
 });
