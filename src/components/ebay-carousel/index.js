@@ -50,14 +50,18 @@ function init() {
     this.itemEls = this.listEl.children;
     this.lastIndex = this.itemEls.length - 1;
     observer.observeRoot(this, ['index']);
-    this.calculateWidths();
-    this.performSlide(this.state.index);
     this.subscribeTo(window).on('resize', throttle(() => this.resizeHandler(), 100));
+    this.calculateWidths();
+    this.performSlide();
 }
 
 function resizeHandler() {
     this.calculateWidths(true);
-    this.performSlide(parseInt(this.state.index));
+    this.performSlide();
+}
+
+function update_index() { // eslint-disable-line camelcase
+    this.performSlide();
 }
 
 function handleNext() {
@@ -74,23 +78,18 @@ function handlePrev() {
     }
 }
 
-function update_index(newIndex) { // eslint-disable-line camelcase
-    this.performSlide(parseInt(newIndex));
-}
-
 /**
- * Highest level slide function called from any data change to index (via UI and API)
+ * High level slide called for initialization and data change to index (via UI and API)
  * @param {Integer} index
  */
-function performSlide(index) {
-    if (index >= 0 && index <= this.lastIndex) {
-        this.moveToIndex(index);
+function performSlide() {
+    if (this.state.index >= 0 && this.state.index <= this.lastIndex) {
+        this.moveToIndex(this.state.index);
+        this.setState('firstVisibleIndex', this.calculateFirstVisibleIndex());
+        this.setState('lastVisibleIndex', this.calculateLastVisibleIndex());
         this.setState('prevControlDisabled', this.state.index === 0);
-        this.setState('nextControlDisabled', this.state.stop || this.state.index === this.lastIndex);
+        this.setState('nextControlDisabled', this.state.lastVisibleIndex === this.lastIndex);
     }
-
-    this.setState('firstVisibleIndex', this.calculateFirstVisibleIndex());
-    this.setState('lastVisibleIndex', this.calculateLastVisibleIndex());
 
     this.update(); // FIXME: why won't it rerender on its own?
 
@@ -106,42 +105,19 @@ function performSlide(index) {
  * @param {Integer} index
  */
 function moveToIndex(index) {
-    // if items width is smaller than container, then don't translate
-    const shouldNotMove = this.allItemsWidth < this.containerWidth;
-    if (shouldNotMove) {
-        this.setState('stop', true); // TODO: refactor stop uasge
-    } else {
-        const widthBeforeIndex = this.getWidthBeforeIndex(index);
-        let translation = (-1 * widthBeforeIndex);
-        const maxTranslation = -1 * (this.allItemsWidth - this.containerWidth);
-        if (translation < maxTranslation) {
-            translation = maxTranslation;
-            this.setState('stop', true);
-        } else {
-            this.setState('stop', false);
-        }
-
-        if (translation !== this.state.translation) {
-            this.setState('translation', translation);
-            emitAndFire(this, 'carousel-translate');
-        }
+    let translation = -1 * this.getWidthBeforeIndex(index);
+    const maxTranslation = -1 * (this.allItemsWidth - this.containerWidth);
+    if (translation !== 0 && translation < maxTranslation) {
+        translation = maxTranslation;
+    }
+    if (translation !== this.state.translation) {
+        this.setState('translation', translation);
+        emitAndFire(this, 'carousel-translate');
     }
 }
 
 function calculateNextIndex() {
-    if (this.state.isDiscrete) {
-        return this.state.index + 1;
-    }
-
-    const lastVisibleIndex = this.calculateLastVisibleIndex();
-    let index = lastVisibleIndex + 1;
-
-    // if we'll hit the right end, target index should be current lastVisibleIndex
-    if (this.getWidthAfterIndex(lastVisibleIndex) < this.containerWidth) {
-        index = lastVisibleIndex;
-    }
-
-    return index;
+    return this.calculateLastVisibleIndex() + 1;
 }
 
 function calculatePrevIndex() {
@@ -181,32 +157,30 @@ function widthLoop(startIndex, direction) {
 }
 
 function calculateFirstVisibleIndex() {
-    if (!this.state.nextControlDisabled) {
+    if (this.state.isDiscrete || !this.state.nextControlDisabled) {
         return this.state.index;
     }
 
-    // if carousel is all the way on right side, need to calculate manually
+    // if continuous carousel is all the way on right side, need to calculate manually
     return this.widthLoop(this.lastIndex, -1) + 1;
 }
 
 function calculateLastVisibleIndex() {
+    if (this.state.isDiscrete) {
+        return this.state.index;
+    }
+
     return this.widthLoop(this.state.index, 1) - 1;
 }
 
 /**
  * Get the aggregate width of all items in the carousel until this index
+ * @params {Integer} index
  */
 function getWidthBeforeIndex(index) {
-    const fullWidth = index > this.lastIndex;
-    const loopIndex = fullWidth ? this.lastIndex + 1 : index;
     let width = 0;
-
-    for (let i = 0; i < loopIndex; i++) {
+    for (let i = 0; i < index; i++) {
         width += this.getItemWidth(i) + constants.margin;
-    }
-
-    if (fullWidth) {
-        width -= constants.margin;
     }
 
     return width;
@@ -214,6 +188,7 @@ function getWidthBeforeIndex(index) {
 
 /**
  * Get the aggregate width of all items in the carousel after (and including) this index
+ * @params {Integer} index
  */
 function getWidthAfterIndex(index) {
     let width = 0;
@@ -230,8 +205,8 @@ function getWidthAfterIndex(index) {
  * @params {Boolean} forceUpdate: Updates the cache with new values
  */
 function calculateWidths(forceUpdate) {
-    this.allItemsWidth = this.getWidthBeforeIndex(this.lastIndex + 1);
-    this.containerWidth = this.listEl.getBoundingClientRect().width || 0;
+    this.allItemsWidth = this.getWidthAfterIndex(0);
+    this.containerWidth = this.listEl.getBoundingClientRect().width;
     for (let i = 0; i <= this.lastIndex; i++) {
         this.getItemWidth(i, forceUpdate);
     }
@@ -246,8 +221,7 @@ function getItemWidth(index, forceUpdate) {
     if (this.itemCache && this.itemCache[index] && !forceUpdate) {
         return this.itemCache[index];
     } else if (index >= 0 && index <= this.lastIndex) {
-        const rect = this.itemEls[index].getBoundingClientRect();
-        this.itemCache[index] = rect.width || 0;
+        this.itemCache[index] = this.itemEls[index].getBoundingClientRect().width;
         return this.itemCache[index];
     }
 
